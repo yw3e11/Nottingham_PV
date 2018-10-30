@@ -1,28 +1,153 @@
 ---
-title: "Nottingham_PV"
+title: "Suitable roofs in Nottingham for PV"
+author: "Phil Wu: phil.wu@soton.ac.uk"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
-
+  
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, 
+                      #results = 'hide', 
+                      error = FALSE, 
+                      #include = FALSE, 
+                      out.width="600px", 
+                      dpi=120,
+                      warning = FALSE,
+                      message = FALSE,
+                      fig_caption = TRUE,
+                      fig_height = 4, # default, make it bigger to stretch vertical axis
+                      fig_width = 6, # full width
+                      fig.align = 'center', # full width
+                      tidy = TRUE ) # tidy up code in case echo = TRUE
+options(digits=3) 
+options(scipen=999) # removes scientific notation for large numbers
+# to change it back, use the following code
+# options(scipen=0)
+
+# Set start time ----
+startTime <- Sys.time() 
+
+myPackages <- c("tidyverse", 
+                "lubridate", 
+                "zoo", 
+                "xts", 
+                "chron", 
+                "data.table", 
+                "scales",
+                "DT",
+                "fTrading", 
+                "data.table", 
+                "knitr", 
+                "gridExtra", 
+                "plotly", 
+                "stringr", 
+                "kableExtra", 
+                "maptools" ,
+                "ggmap",
+                "ggplot2",
+                "ggsn",
+                "sf",
+                "leaflet", 
+                "fmsb", 
+                "RColorBrewer",
+                #"plyr", # this library clash with dplyr all the time. 
+                "png")
+#"sp" ,
+#"rgdal",
+#"raster", 
+#"rasterVis" ,
+#"rgeos")
+
+#devtools::install_github("tidyverse/ggplot2")
+
+required_packages <- function(x,y){
+  for( i in x ){
+    if( ! require( i , character.only = TRUE ) ){
+      if( Sys.info()["sysname"] == "Linux" ){
+        install.packages( i , repos=y , type="source" , quiet=TRUE , dependencies = TRUE , verbose = FALSE )
+      } else {
+        install.packages( i , repos=y , quiet=TRUE , dependencies = TRUE , verbose = FALSE )
+      }
+      require( i , character.only = TRUE, quietly = TRUE )
+    }
+  }
+}
+
+required_packages((myPackages),"http://cran.rstudio.com/")
+
+# When find functions under dplyr (e.g. group_by) not working, try detach the packpage of "plyr"
+#detach(package:plyr)
+
+# Housekeeping
+#rm(list=ls(all=TRUE)) # remove all objects from workspace
+
+#Extended palette
+palette_Dark2 <- colorRampPalette(brewer.pal(8, "Dark2"))
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r, include = F}
+# Overwrite the ggplot theme set to a more customerised appearance 
+#ggplot <- function(...) ggplot2::ggplot(...) + 
+#  scale_fill_brewer(palette = "Set1") + 
+#  scale_color_brewer(palette = "Set1") +
+#  theme_gray() +
+#  theme(aspect.ratio = 1,
+#        panel.background= element_rect(colour = "grey70", fill = "grey95"),
+#        panel.border = element_rect(colour = "grey70", fill = NA),
+#        strip.background = element_rect(colour = "grey70"))
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+```{r}
+list_os_csv <- list.files(path = "../OS_addressPlus/AddressPluss_original/", full.names = T)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+os_header <- read.csv("../OS_addressPlus/addressbase-plus-header.csv", header = F) %>% 
+  gather(key = "key", value = "value")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+```{r}
+find_os_csv <- function(x){
+  temp_csv <- read_csv(file = x, col_names = F, col_types = list(X27 = col_character(), 
+                                                                 X33 = col_character()) ) 
+  temp_csv <- temp_csv%>% 
+    setnames(os_header$value)
+    filter(X61 == "NOTTINGHAM") # X61 column is the LA name, X62 is slightly different
+  
+  return(temp_csv)
+}
+
+OS_nottingham <- lapply(list_os_csv, find_os_csv) %>%  # lapply (variable, function) returns a list
+  bind_rows()
+OS_nottingham_original <- OS_nottingham
+
+OS_nottingham <- OS_nottingham %>% 
+  setnames(os_header$value)
+```
+
+Nottingham CC provided a list of non-domestic sites for analysis
+
+```{r}
+nottingham_sites <- read.csv("list_sites_nottingham.csv", header = T, stringsAsFactors = F)
+
+head(nottingham_sites)
+
+OS_nottingham_sites <- OS_nottingham %>% 
+  filter(POSTCODE %in% nottingham_sites$Postcode) 
+
+OS_nottingham_sites
+write.csv(OS_nottingham_sites, "./OS_nottingham_sites.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
